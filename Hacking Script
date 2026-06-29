@@ -1,0 +1,205 @@
+--// ADMIN PANEL (Make Your Script Compatible)
+--// Whitelist, ESP, Fly, Fly Speed Control, Speed, Noclip, Draggable UI
+
+local LOCAL_ID = 8811735643 -- replace with your user ID
+
+local player = game.Players.LocalPlayer
+if player.UserId ~= LOCAL_ID then
+    return
+end
+
+local char = player.Character or player.CharacterAdded:Wait()
+local root = char:WaitForChild("HumanoidRootPart")
+local humanoid = char:WaitForChild("Humanoid")
+
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService("RunService")
+
+--====================================================
+-- GUI SETUP
+--====================================================
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AdminPanel"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 300, 0, 350)
+Frame.Position = UDim2.new(0.1, 0, 0.1, 0)
+Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Frame.BorderSizePixel = 0
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
+
+local UIList = Instance.new("UIListLayout")
+UIList.Padding = UDim.new(0, 10)
+UIList.Parent = Frame
+
+local function makeButton(text)
+    local b = Instance.new("TextButton")
+    b.Size = UDim2.new(1, -20, 0, 40)
+    b.Position = UDim2.new(0, 10, 0, 0)
+    b.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    b.TextColor3 = Color3.fromRGB(255, 255, 255)
+    b.TextSize = 20
+    b.Text = text
+    b.Parent = Frame
+    return b
+end
+
+-- Buttons
+local espBtn = makeButton("ESP: OFF")
+local flyBtn = makeButton("Fly: OFF")
+local flySpeedUp = makeButton("Fly Speed +")
+local flySpeedDown = makeButton("Fly Speed -")
+local speedBtn = makeButton("Speed: OFF")
+local noclipBtn = makeButton("Noclip: OFF")
+local closeBtn = makeButton("Close Menu")
+
+--====================================================
+-- MENU TOGGLE (M)
+--====================================================
+
+UIS.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.M then
+        Frame.Visible = not Frame.Visible
+    end
+end)
+
+closeBtn.MouseButton1Click:Connect(function()
+    Frame.Visible = false
+end)
+
+--====================================================
+-- ESP SYSTEM
+--====================================================
+
+local espEnabled = false
+
+local function applyESP(char)
+    for _, part in ipairs(char:GetChildren()) do
+        if part:IsA("BasePart") then
+            local highlight = Instance.new("Highlight")
+            highlight.FillColor = Color3.fromRGB(255, 0, 0)
+            highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+            highlight.Parent = part
+        end
+    end
+end
+
+local function removeESP()
+    for _, p in ipairs(game.Players:GetPlayers()) do
+        if p.Character then
+            for _, obj in ipairs(p.Character:GetDescendants()) do
+                if obj:IsA("Highlight") then
+                    obj:Destroy()
+                end
+            end
+        end
+    end
+end
+
+local function toggleESP()
+    espEnabled = not espEnabled
+    espBtn.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
+
+    if espEnabled then
+        for _, p in ipairs(game.Players:GetPlayers()) do
+            if p ~= player and p.Character then
+                applyESP(p.Character)
+            end
+        end
+    else
+        removeESP()
+    end
+end
+
+espBtn.MouseButton1Click:Connect(toggleESP)
+
+--====================================================
+-- FLY SYSTEM
+--====================================================
+
+local flyEnabled = false
+local flySpeed = 50
+local moveVec = Vector3.zero
+
+UIS.InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.W then moveVec = Vector3.new(0,0,-1) end
+    if input.KeyCode == Enum.KeyCode.S then moveVec = Vector3.new(0,0,1) end
+    if input.KeyCode == Enum.KeyCode.A then moveVec = Vector3.new(-1,0,0) end
+    if input.KeyCode == Enum.KeyCode.D then moveVec = Vector3.new(1,0,0) end
+end)
+
+UIS.InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.W or input.KeyCode == Enum.KeyCode.S or
+       input.KeyCode == Enum.KeyCode.A or input.KeyCode == Enum.KeyCode.D then
+        moveVec = Vector3.zero
+    end
+end)
+
+local function toggleFly()
+    flyEnabled = not flyEnabled
+    flyBtn.Text = "Fly: " .. (flyEnabled and "ON" or "OFF")
+    root.Anchored = flyEnabled
+end
+
+flyBtn.MouseButton1Click:Connect(toggleFly)
+
+flySpeedUp.MouseButton1Click:Connect(function()
+    flySpeed = flySpeed + 10
+end)
+
+flySpeedDown.MouseButton1Click:Connect(function()
+    flySpeed = math.max(10, flySpeed - 10)
+end)
+
+RS.RenderStepped:Connect(function(dt)
+    if flyEnabled then
+        local cam = workspace.CurrentCamera
+        local worldMove = cam.CFrame:VectorToWorldSpace(moveVec)
+        root.CFrame = root.CFrame + (worldMove * flySpeed * dt)
+    end
+end)
+
+--====================================================
+-- SPEED SYSTEM
+--====================================================
+
+local speedEnabled = false
+
+local function toggleSpeed()
+    speedEnabled = not speedEnabled
+    speedBtn.Text = "Speed: " .. (speedEnabled and "ON" or "OFF")
+end
+
+speedBtn.MouseButton1Click:Connect(toggleSpeed)
+
+RS.RenderStepped:Connect(function()
+    humanoid.WalkSpeed = speedEnabled and 40 or 16
+end)
+
+--====================================================
+-- NOCLIP SYSTEM
+--====================================================
+
+local noclipEnabled = false
+
+local function toggleNoclip()
+    noclipEnabled = not noclipEnabled
+    noclipBtn.Text = "Noclip: " .. (noclipEnabled and "ON" or "OFF")
+end
+
+noclipBtn.MouseButton1Click:Connect(toggleNoclip)
+
+RS.Stepped:Connect(function()
+    if noclipEnabled then
+        for _, part in ipairs(char:GetChildren()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+end)
